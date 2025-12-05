@@ -1,5 +1,5 @@
 ---
-title: "FSOP attack - (1)"
+title: "FSOP attack - (1)[kr]"
 date : 2025-12-04 19:00:00
 categories: [Pwnable, Heap, FSOP]
 tags : [fsop , pwn , glibc , file-structure]
