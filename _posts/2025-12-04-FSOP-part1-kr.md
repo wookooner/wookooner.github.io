@@ -1,5 +1,5 @@
 ---
-title: "FSOP attack - (1)[kr]"
+title: "FSOP(File Stream Oriented Programming) - (1)[kr]"
 date : 2025-12-04 19:00:00
 categories: [Pwnable, Heap, FSOP]
 tags : [fsop , pwn , glibc , file-structure]
@@ -7,7 +7,7 @@ tags : [fsop , pwn , glibc , file-structure]
 
 
 ## FSOP
-===Part 1=== FIle Structure Analyze
+===Part 1=== FILE Structure Analyze
 
 [Part 2 : How to use for attack]
 
