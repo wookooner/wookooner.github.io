@@ -1,6 +1,6 @@
 ---
 title: "pwnable.tw - re-alloc[200pts]"
-date : 2025-12-07 17:00:00
+date : 2025-12-07 00:00:00 +0900
 categories: [Pwnable, Wargame , pwnabletw]
 tags : [tcache , pwn , use after free, pwnabletw , realloc , double free]
 ---
