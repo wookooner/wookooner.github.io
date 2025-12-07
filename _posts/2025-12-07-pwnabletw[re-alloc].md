@@ -90,7 +90,7 @@ The rfree() function frees the address allocated in the heap (which can store a 
 ```python
 allocate(idx = 0 , size = 16 , data = 'a')
 reallocate(idx = 0 , size = 0 , data='')   // free(ptr)
-reallocate(idx = 0 , size= = 16 , data=0xkkkkkkkk+"A") //free_tcache->fd for attack addr, "A" for tcache-key bypass
+reallocate(idx = 0 , size= = 16 , data=0xkkkkkkkk+"A") #free_tcache->fd for attack addr, "A" for tcache-key bypass
 ```
 
 
