@@ -77,10 +77,11 @@ void reallocate(void)
 ```
 
 
-취약점은 realloc(*ptr, size) 함수가 size == 0 && ptr!=NULL 이라면 free(ptr) 과 같은 동작을 수행한다.
+The vulnerability arises because the realloc(*ptr, size) function performs an operation equivalent to free(ptr) if size == 0 && ptr != NULL.
 
 
-rfree()함수에선 &heap(allocate 함수에서 최대 2개의 주소만 저장가능)에 할당받은 주소를 free하면서 heap[idx]를 0으로 초기화하지만 reallocate함수에서 검증 오류로 free(ptr)은 가능하지만 초기화는 되지 않으면서 uaf취약점이 발생한다.
+The rfree() function frees the address allocated in the heap (which can store a maximum of two addresses in the allocate function) and initialises heap[idx] to zero. However, due to a verification error in the reallocate function, free(ptr) is possible but the initialisation fails, resulting in an use-after-free vulnerability.
+
 
 
 ## how to use vuln
@@ -88,8 +89,8 @@ rfree()함수에선 &heap(allocate 함수에서 최대 2개의 주소만 저장�
 
 ```python
 allocate(idx = 0 , size = 16 , data = 'a')
-reallocate(idx = 0 , size = 0 , data='')   //여기서 free(ptr) 한번
-reallocate(idx = 0 , size= = 16 , data=0xkkkkkkkk+"A") //free_tcache->fd 위치에 원하는 주소, "A" 는 tcache-key 검증 우회
+reallocate(idx = 0 , size = 0 , data='')   // free(ptr)
+reallocate(idx = 0 , size= = 16 , data=0xkkkkkkkk+"A") //free_tcache->fd for attack addr, "A" for tcache-key bypass
 ```
 
 
@@ -117,12 +118,12 @@ longlong read_long(void)
 ```
 
 
-atoll()함수를 printf()로 조작하면 fsb를 이용하여 라이브러리 주소 leak 가능.
+Overwriting atoll got address to printf() and use fsb for leak libc adrr.
 
-후에 one_gadget이나 system으로 다른 함수를 조작하여 쉘을 얻으면 성공.
+and use one_gadget or system for sehll.
 
 
-&heap[0,1] 두개의 주소밖에 할당하지못해서 uaf를 통해 tcache-fd를 조작후 uaf를 이용해 다른 size로 변경후 free하면서 목표 주소가 담긴 tcache bin size에 청크가 할당되지않도록 조작해야한다.
+Since we can only modify the &heap[0,1] address, we need to leverage UAF to manipulate the tcache-fd, then resize the UAF and free it to ensure the target chunk doesn't fall into the tcache bin size.
 
 
 ## exploit
