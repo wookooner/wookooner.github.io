@@ -435,7 +435,13 @@ str_jumps=leak_stdout-0x4400
 이런식으로 FILE구조체를 조작해서 버퍼가 없어도 메모리 내용들을 출력할수있게했다.
 그럼 프로그램에 입력을 받는 fgets함수를 이용해서 우리가 원하는 주소에도 데이터를 쓸수있지않을까?
 
-## fgets
+## Use stdin to exploit
+
+
+
+### fgets
+
+
 
 ```c
 
@@ -632,4 +638,58 @@ libc_hidden_ver (_IO_new_file_underflow, _IO_file_underflow)
 모든 if문을 패스하고 _IO_SYSREAD (fp, fp->_IO_buf_base, fp->_IO_buf_end - fp->_IO_buf_base);을 호출하는걸 볼수있다.
 
 즉 _IO_buf_base와 _IO_buf_end를 적절히 조작하면 우리가 원하는 위치에 데이터를 쓸수있다.
+
+glibc 2.27에서의 _IO_2_1_stdin_ 메모리 상태를 보면 _IO_buf_end주소에 _IO_buf_base = 0x7ffff7dcda83 <_IO_2_1_stdin_+131> 이 값이 있다.
+
+1byte를 \x00으로 덮으면 _IO_2_1_stdin_ 의 구조체 데이터들을 조작할수있다.
+
+(gdb) x/12gx 0x7ffff7dcda00
+0x7ffff7dcda00 <_IO_2_1_stdin_>:        0x00000000fbad208b      0x00007ffff7dcda83
+
+_IO_read_ptr > _IO_read_base 조건만 신경써서 조작하면 무난히 원하는 위치에 데이터를 쓸수있을꺼같다.
+
+그런데 우리는 기회가 4번이고 앞서 leak을 하면서 2번의 기회를 사용했고 지금 _IO_2_1_stdin_ 조작을 위해 1번을 쓰게되면 추가 입력과 프로그램상 남은 마지막 1번의 기회만 남게된다.
+
+4번의 입력기회가 끝나면 puts()함수를 호출하고 종료하게되어서 출력 구조체 _IO_2_1_stdout_의 vtable조작을 해서 one_gadget이나 system함수를 호출하도록해보자.
+이 과정에서 glibc 2.27+ 환경이라 vtable 검증 우회가 필요하다.
+
+
+### Make base for exploit
+
+정리하자면 
+
+(1) _IO_bufe_base_의 1byte를 \x00으로 덮으면서 stdin구조체 조작을 가능하게한다.
+
+(2) _IO_bufe_base가 _IO_2_1_stdin_구조체의 주소를 가르키게 되면 0x83크기만큼의 데이터를 더 쓸수있게된다.
+
+(3) _IO_read_ptr > _IO_read_base를 만족하면서 stdin구조체 조작을 통해 쓰기를 원하는 주소의 위치를 _IO_buf_base와 원하는 크기만큼 더해서 _IO_buf_end를 조작한다.
+
+(4) 조작된 데이터를 입력하면 기회는 1번 남기때문에 puts()함수에서 stdout 호출을 통해 exploit을 하기위해 stdout의 구조체 데이터들을 조작한다.
+
+```python
+
+#_IO_buf_base 1byte => 0x0
+send(2097152,10414633,"A")
+
+#FAKE FILE
+pay=p64(0xfbad208b)  #flag default setting
+pay+=p64(stdin)  #_IO_read_ptr
+pay+=p64(0)   #_IO_read_base
+pay+=p64(stdin)*4
+pay+=p64(leak_stdout)  #_IO_buf_base
+pay+=p64(leak_stdout+0x1000)   #_IO_buf_end
+pay=pay.ljust(0x84,b'\x00')
+p.sendline(pay)
+
+```
+
+
+이렇게되면 우리는 fgets()를 마지막으로 한번 쓸수있고 쓰게되는 위치는 _IO_2_1_stdout_의 데이터들이고 총 0x1000만큼 쓸수있게된다.
+
+
+## GLIBC 2.27+ vtable pointer validation
+
+stdout을 이용해서 puts()를 호출할때 vtable의 데이터들 조작해서 vtable을 참조해서 _IO_overflow() 같은 함수를 호출할때 system이나 one_gadget으로 덮어 쉘을 실행시키도록 할 예정이였다.
+
+하지만 2.27이상 버전부터는 vtable 주소에대해 유효한 주소값인지 검증하는 로직이 추가되었다.
 
