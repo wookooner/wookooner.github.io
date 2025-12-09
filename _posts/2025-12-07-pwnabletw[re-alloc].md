@@ -21,20 +21,12 @@ Glibc : GNU C Library (Ubuntu GLIBC 2.29-0ubuntu2) stable release version 2.29.
 =protect= 
 
 Arch:       amd64-64-little
-
 RELRO:      Partial RELRO
-
 Stack:      Canary found
-
 NX:         NX enabled
-
 PIE:        No PIE (0x400000)
-
 FORTIFY:    Enabled
-
 Stripped:   No
-
-
 
 
 ## vulnerable
