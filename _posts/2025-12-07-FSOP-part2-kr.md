@@ -629,3 +629,7 @@ libc_hidden_ver (_IO_new_file_underflow, _IO_file_underflow)
 
 ```
 
+모든 if문을 패스하고 _IO_SYSREAD (fp, fp->_IO_buf_base, fp->_IO_buf_end - fp->_IO_buf_base);을 호출하는걸 볼수있다.
+
+즉 _IO_buf_base와 _IO_buf_end를 적절히 조작하면 우리가 원하는 위치에 데이터를 쓸수있다.
+
