@@ -480,12 +480,151 @@ _IO_fgets (char *buf, int n, FILE *fp)
 
 size가 1보다 크면 조건문을 모두 패스하고 _IO_getline을 호출하게된다.
 
+
+### _IO_getline
+
+
 ```c
 
 _IO_getline (FILE *fp, char *buf, size_t n, int delim,
-	     int extract_delim)
+	     int extract_delim) // n=n-1 , delim = '\n' , extract_delim = 1
 {
   return _IO_getline_info (fp, buf, n, delim, extract_delim, (int *) 0);
 }
+
+```
+
+다시 _IO_getline_info를 호출한다.
+
+
+### _IO_getline_info
+
+```c
+
+ (FILE *fp, char *buf, size_t n, int delim,
+		  int extract_delim, int *eof)
+{
+  char *ptr = buf;
+  if (eof != NULL)
+    *eof = 0;
+  if (__builtin_expect (fp->_mode, -1) == 0)
+    _IO_fwide (fp, -1);
+  while (n != 0)
+    {
+      ssize_t len = fp->_IO_read_end - fp->_IO_read_ptr; // len < 0
+      if (len <= 0)
+	      {
+	        int c = __uflow (fp);
+	        if (c == EOF)
+	        {
+	          if (eof)
+		          *eof = c;
+	          break;
+	        }
+	    
+      ...
+}
+libc_hidden_def (_IO_getline_info)
+
+```
+
+앞에서 _IO_read_end의 1byte를 \x00으로 써서 len = fp->_IO_read_end - fp->_IO_read_ptr 의 크기는 0보다 작아지게되어서 조건문을 통과하고 __uflow를 호출한다.
+
+_IO_2_1_stdin_ *vtable -> __uflow 는 __GI__IO_default_uflow 을 호출한다.
+
+
+### _IO_default_uflow
+
+```c
+
+int
+_IO_default_uflow (FILE *fp)
+{
+  int ch = _IO_UNDERFLOW (fp);
+  if (ch == EOF)
+    return EOF;
+  return *(unsigned char *) fp->_IO_read_ptr++;
+}
+libc_hidden_def (_IO_default_uflow)
+
+```
+
+그리고 _IO_UNDERFLOW를 호출한다. -> _IO_new_file_underflow()
+
+
+### _IO_new_File_underflow()
+
+```c
+
+_IO_new_file_underflow (FILE *fp)
+{
+  ssize_t count;
+  /* C99 requires EOF to be "sticky".  */
+  if (fp->_flags & _IO_EOF_SEEN)
+    return EOF;
+  if (fp->_flags & _IO_NO_READS)
+    {
+      fp->_flags |= _IO_ERR_SEEN;
+      __set_errno (EBADF);
+      return EOF;
+    }
+  if (fp->_IO_read_ptr < fp->_IO_read_end)
+    return *(unsigned char *) fp->_IO_read_ptr;
+  if (fp->_IO_buf_base == NULL)
+    {
+      /* Maybe we already have a push back pointer.  */
+      if (fp->_IO_save_base != NULL)
+	{
+	  free (fp->_IO_save_base);
+	  fp->_flags &= ~_IO_IN_BACKUP;
+	}
+      _IO_doallocbuf (fp);
+    }
+  /* FIXME This can/should be moved to genops ?? */
+  if (fp->_flags & (_IO_LINE_BUF|_IO_UNBUFFERED))
+    {
+      /* We used to flush all line-buffered stream.  This really isn't
+	 required by any standard.  My recollection is that
+	 traditional Unix systems did this for stdout.  stderr better
+	 not be line buffered.  So we do just that here
+	 explicitly.  --drepper */
+      _IO_acquire_lock (stdout);
+      if ((stdout->_flags & (_IO_LINKED | _IO_NO_WRITES | _IO_LINE_BUF))
+	  == (_IO_LINKED | _IO_LINE_BUF))
+	_IO_OVERFLOW (stdout, EOF);
+      _IO_release_lock (stdout);
+    }
+  _IO_switch_to_get_mode (fp);
+  /* This is very tricky. We have to adjust those
+     pointers before we call _IO_SYSREAD () since
+     we may longjump () out while waiting for
+     input. Those pointers may be screwed up. H.J. */
+  fp->_IO_read_base = fp->_IO_read_ptr = fp->_IO_buf_base;
+  fp->_IO_read_end = fp->_IO_buf_base;
+  fp->_IO_write_base = fp->_IO_write_ptr = fp->_IO_write_end
+    = fp->_IO_buf_base;
+  count = _IO_SYSREAD (fp, fp->_IO_buf_base,
+		       fp->_IO_buf_end - fp->_IO_buf_base);
+  if (count <= 0)
+    {
+      if (count == 0)
+	fp->_flags |= _IO_EOF_SEEN;
+      else
+	fp->_flags |= _IO_ERR_SEEN, count = 0;
+  }
+  fp->_IO_read_end += count;
+  if (count == 0)
+    {
+      /* If a stream is read to EOF, the calling application may switch active
+	 handles.  As a result, our offset cache would no longer be valid, so
+	 unset it.  */
+      fp->_offset = _IO_pos_BAD;
+      return EOF;
+    }
+  if (fp->_offset != _IO_pos_BAD)
+    _IO_pos_adjust (fp->_offset, count);
+  return *(unsigned char *) fp->_IO_read_ptr;
+}
+libc_hidden_ver (_IO_new_file_underflow, _IO_file_underflow)
 
 ```
