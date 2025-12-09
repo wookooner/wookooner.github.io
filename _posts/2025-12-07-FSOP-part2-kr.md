@@ -1,5 +1,5 @@
 ---
-title: "FSOP(File Stream Oriented Programming) - (1)[en]"
+title: "FSOP(File Stream Oriented Programming) - (2)[en]"
 date : 2025-12-05 00:00:00 +0900
 categories: [Pwnable, Heap, FSOP, ]
 tags : [fsop , pwn , glibc , file-structure , stream , IO , vtable]
@@ -628,3 +628,4 @@ _IO_new_file_underflow (FILE *fp)
 libc_hidden_ver (_IO_new_file_underflow, _IO_file_underflow)
 
 ```
+
