@@ -1,5 +1,5 @@
 ---
-title: "FSOP(File Stream Oriented Programming) - (2)[en]"
+title: "FSOP(File Stream Oriented Programming) - (2)[kr]"
 date : 2025-12-05 00:00:00 +0900
 categories: [Pwnable, Heap, FSOP, ]
 tags : [fsop , pwn , glibc , file-structure , stream , IO , vtable]
@@ -353,8 +353,7 @@ _IO_write_base ( 0x7ffff7e04643 ) -> _IO_write_base(0x7ffff7e04600) 으로 조�
 
 (2) new_do_write()의 _IO_SYSSEEK()로 빠지는걸 피하기위해 _IO_read_end값도 조작한다.
 
-(3) 조작이 완료되면 puts함수가 호출될때 _IO_overflow를 호출하면서 조작된 크기만큼의 버퍼를 _IO_write_base위치의 데이터부터 출력하게된다.
-
+(3) 조작이 완료되면 puts함수가 호출될때 _IO_overflow를 호출하면서 조작된 data(_IO_write_base)의 주소부터 size(_IO_write_ptr - _IO_write_base)의 크기만큼 출력하게된다.
 
 
 ```python
@@ -859,7 +858,7 @@ _IO_str_fields에는 _IO_str_overflow()함수 내부에서 (*(_IO_strfile *))fp-
 glibc가 업데이트되면서 (*(_IO_strfile *))fp->_s._allocate_buffer(new_size) 여기의 코드는 malloc()함수로 바뀌게된다.
 
 
-전체적인 _IO_str_jumps의 구조
+(struct _IO_strfile_)_IO_str_jumps의 구조
 
 ```c
 
