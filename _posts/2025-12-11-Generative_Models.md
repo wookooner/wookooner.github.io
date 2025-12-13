@@ -1,7 +1,7 @@
 ---
 title: "Generative Models "
 date : 2025-12-11 00:00:00 +0900
-categories: [DeepLearning, basic,]
+categories: [DeepLearning, models, Generative Models, ]
 tags : [DeepLearning, Generative , Discriminative , GANs , VAEs, ]
 ---
 
