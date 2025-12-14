@@ -1,7 +1,7 @@
 ---
 title: "Generative Models "
 date : 2025-12-11 00:00:00 +0900
-categories: [DeepLearning, basic,]
+categories: [DeepLearning, models, Generative Models, ]
 tags : [DeepLearning, Generative , Discriminative , GANs , VAEs, ]
 ---
 
@@ -14,7 +14,7 @@ Generative Model은 생성모델 즉 확률밀도함수(PDF)를 기반으로 데
 학습 데이터의 분포를 학습하여 새로운 샘플을 최대한 유사하게 만드는게 목표이다.
 
 
-![generative model](/assets\img\posts\deep_learning_generative\11-1-1.png)
+![generative model](/assets/img/posts/deep_learning_generative/11-1-1.png)
 
 
 
@@ -50,7 +50,7 @@ x,y 64pixel의 흑백 이미지라고 하더라도 0~255사이의 값을 가질 
 그 높은 확률을 가진 영역에서 값을 sampling하면 우리는 실제와 구별하기 힘든 생성된 이미지를 얻게된다.
 
 
-![generative model](/assets\img\posts\deep_learning_generative\11-1-2.png)
+![generative model](/assets/img/posts/deep_learning_generative/11-1-2.png)
 
 
 
@@ -83,7 +83,7 @@ Latent Space?
 얼굴 특징 벡터 연산 Ex:
 안경 쓴 남자 - 안경 안 쓴 남자 + 안경 안 쓴 여자 = 안경 쓴 여자
 
-![alt text](/assets\img\posts\deep_learning_generative\11-1-3.png)
+![alt text](/assets/img/posts/deep_learning_generative/11-1-3.png)
 
 - Latent Space에서 벡터 연산 가능
 - 각 방향이 특정 특징을 나타냄
@@ -102,7 +102,7 @@ Latent Space?
 - 부드러운 변화 생성
 - 중간 상태들도 의미 있는 이미지로 생성
   
-  ![alt text](/assets\img\posts\deep_learning_generative\11-1-4.png)
+  ![alt text](/assets/img/posts/deep_learning_generative/11-1-4.png)
 
 ### Advantages
 
@@ -148,7 +148,7 @@ Generater -> Fake Images -> Discriminator <- Real Images
 * Generator : 진짜와 구분 불가능한 이미지
 * Discriminator : 구분불가 (D(x) = 1/2 , 동전 던지기와 같음)
 
-![alt text](/assets\img\posts\deep_learning_generative\11-1-5.png)
+![alt text](/assets/img/posts/deep_learning_generative/11-1-5.png)
 
 파란색 점선 = Discriminative 분포 (p_x)
 검은색 점 = Generator 분포 (p_g)
@@ -158,7 +158,7 @@ Generater -> Fake Images -> Discriminator <- Real Images
 
 #### DeepFake
 
-![alt text](/assets\img\posts\deep_learning_generative\11-1-6.png)
+![alt text](/assets/img/posts/deep_learning_generative/11-1-6.png)
 
 원리
 * 원본 영상의 얼굴인식 
@@ -176,10 +176,10 @@ Generater -> Fake Images -> Discriminator <- Real Images
 RBM은 확률밀도함수(pdf)를 학습하기 위해 만들어진 신경만으로 현대적 딥러닝 , 특히 심층 생성 모델의 부흥을 이끈 기념비적인 모델이다.
 
 * Boltzmann Machine 
-![alt text](/assets\img\posts\deep_learning_generative\11-1-7.png)
+![alt text](/assets/img/posts/deep_learning_generative/11-1-7.png)
 
 * Restricted Boltzmann Machine(RBM)
-![alt text](/assets\img\posts\deep_learning_generative\11-1-8.png)
+![alt text](/assets/img/posts/deep_learning_generative/11-1-8.png)
 
 
 ### why restricted?
@@ -195,7 +195,7 @@ RBM은 확률밀도함수(pdf)를 학습하기 위해 만들어진 신경만으�
 
 이 독립성덕분에 우리는 복잡한 확률 계산을 뉴런단위로 쪼개어 병렬 처리할수있게 되었고 효율적인 학습 알고리즘의 적용이 가능해졌다.
 
-P(v,h) vs P(h|v) or P(v|h)
+P(v,h) vs P(hㅣv) or P(vㅣh)
 
 ### RBM && Neural Network
 
@@ -209,15 +209,15 @@ P(v,h) vs P(h|v) or P(v|h)
 
 ### Energy-based Learning
 
-![alt text](/assets\img\posts\deep_learning_generative\11-1-9.png)
+![alt text](/assets/img/posts/deep_learning_generative/11-1-9.png)
 
 학습 데이터에 존재하는 패턴을 안정적인 상태로 학습하고 학습 데이터와 유사한 패턴에 대해서는 낮은에너지(높은 확률)를 부여하고 노이즈나 데이터에 없는 패턴에 대해서는 높은에너지(낮은 확률)를 부여하도록 가중치와 편향을 조정한다.
 
-![alt text](/assets\img\posts\deep_learning_generative\11-1-10.png)
+![alt text](/assets/img/posts/deep_learning_generative/11-1-10.png)
 
 
-![alt text](/assets\img\posts\deep_learning_generative\11-1-11.png)
+![alt text](/assets/img/posts/deep_learning_generative/11-1-11.png)
 
-![alt text](/assets\img\posts\deep_learning_generative\11-1-12.png)
+![alt text](/assets/img/posts/deep_learning_generative/11-1-12.png)
 
-![alt text](/assets\img\posts\deep_learning_generative\11-1-13.png)
+![alt text](/assets/img/posts/deep_learning_generative/11-1-13.png)
