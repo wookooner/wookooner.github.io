@@ -106,12 +106,6 @@ void survey(void)
 }
 ```
 
-
-#1 reason의 스택안의 데이터들이 초기화되지않아 스택안의 데이터들까지 연결되어서 출력됨. stack에 _IO_2_1_stdout_주소가 있어 이 주소를 leak.
-
-#2 cnt의 값이 한자리일 경우 local_ec변수의 크기 56에 딱 맞지만 10이 되는 순간부터 값이 57이되어 다음 변수인 next_size를 1byte 덮게되고 100부터 next_size를 2byte 덮게됨.
-
-
 #1: Uninitialized Stack Data Leak
 
 The data in the `reason` stack variable is not initialized, causing stack contents to be concatenated with the output. This leaks the `_IO_2_1_stdout_` address present on the stack.
