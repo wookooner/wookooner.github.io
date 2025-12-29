@@ -75,7 +75,7 @@ can use size 0x60~0x6F size chunk
 
 cant use just malloc for exploit(maybe stack enviroment)
 trigger double free and call malloc_printerr -> malloc()
-can use third one_gadget offset
+can use third one_gadget offset.
 
 ## exploit
 
