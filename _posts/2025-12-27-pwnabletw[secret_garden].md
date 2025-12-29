@@ -79,5 +79,5 @@ can use third one_gadget offset.
 
 ## exploit
 
-![exploit](/assets\img\posts\pwntw\1.png)
+![exploit](/assets/img/posts/pwntw/1.png)
 
