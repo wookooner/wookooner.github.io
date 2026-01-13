@@ -1,6 +1,6 @@
 ---
 title: "Dreamhack - sea of stack"
-date : 2025-01-13 00:00:00 +0900
+date : 2026-01-13 00:00:00 +0900
 categories: [Pwnable, Wargame, Dreamhack, Level4]
 tags : [arbitrary write, stack expansion, manual stack growth, rop, libc leak]
 ---
