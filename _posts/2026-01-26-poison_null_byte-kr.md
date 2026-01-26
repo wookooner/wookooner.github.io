@@ -175,6 +175,7 @@ libc
 4, malloc_hook을 할당받고 malloc_hook 주소를 free한다
 5, 그럼 malloc_hook위치에 fd값인 libc의 B의 주소가 들어가고 재할당으로 뒤에 one_gadget값만큼의 바이트를 bruteforce하면된다.
 
+또한 unlink검증 우회를 위해 정상적인 청크로 병합 위치를 돌려서 검증을 통과하게한다.
 
 ### A chunk
 ```python
@@ -232,6 +233,8 @@ a4
 a1 청크를 먼저 해제시킴으로써 if (chunksize(P) != prev_size(next_chunk(P)))
     abort(); 
 검증을 피해간다.
+
+a1은 정상청크이므로 정상적인 청크를 이용해서 검증을 우회하는것이다.
 
 그리고 prev_size값인 0x15a0을 확인하고 이전 청크의 크기가 0x15a0인걸로 알아 -0x15a0의 위치인 청크부터 0x4f0까지 모두 병합시킨다.
 
