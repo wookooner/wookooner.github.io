@@ -1,5 +1,5 @@
 ---
-title: "FSOP(File Stream Oriented Programming) - (2)[en]"
+title: "FSOP(File Stream Oriented Programming) - (2)[kr]"
 date : 2025-12-05 00:00:00 +0900
 categories: [Pwnable, Heap, FSOP, ]
 tags : [fsop , pwn , glibc , file-structure , stream , IO , vtable]
@@ -117,7 +117,7 @@ menu에는 총 4개의 메뉴가 있지만 2,3,4메뉴는 작동하지않고 1�
 문제는 ptr[(long)read_size + -1] 부분에서 원래 의도는 입력 받은 데이터 마지막에 \x00값을 넣는거지만 read_size가 choose_and_alloc 의 크기보다 크다면 우리가 원하는 위치에 \x00의 데이터를 하나 넣을수있다(poison null byte).
 
 
-calloc함수를 할당할때 일정 크기이상을 주면 heap영역의 공간확장이 더는 불가능할때 mmap으로 별도의 영역에 할당하게되면서 libc주소랑 가까워지게 배치를 할수있다.
+calloc함수를 할당할때 일정 크기이상(0x21000)을 주면 heap영역의 공간확장이 더는 불가능할때 mmap으로 별도의 영역에 할당하게되면서 libc주소랑 가까워지게 배치를 할수있다.
 
 
 이 외에는 딱히 취약점이 없어 보인다.
@@ -325,7 +325,7 @@ _IO_new_file_write  (FILE *f, const void *data, ssize_t n)
 
 위에서 봤던 data에는 _IO_2_1_stdout_ -> _IO_write_base 의 주소가 to_do에는 f->_IO_write_ptr - f->_IO_write_base의 값이 설정되어 출력을 하게된다.
 
-gdb로 조작된 _IO_write_base의 데이터를 살펴보자.
+gdb로 1byte를 '\x00'으로 조작한 _IO_write_base의 데이터를 살펴보자.
 
 ```
 
@@ -341,8 +341,9 @@ pwndbg> x/x 0x00007ffff7e038e0
 
 ```
 
-라이브러리주소를 얻을수있다.
+_IO_2_1_stdin_ 라이브러리주소가 포함되어있는걸 볼수있다.
 
+_IO_write_base ( 0x7ffff7e04643 ) -> _IO_write_base(0x7ffff7e04600) 으로 조작후 0x7ffff7e04600(_IO_2_1_stdin_)의 데이터를 0x43만큼 출력한다.
 
 ### step to leak
 
@@ -352,8 +353,7 @@ pwndbg> x/x 0x00007ffff7e038e0
 
 (2) new_do_write()의 _IO_SYSSEEK()로 빠지는걸 피하기위해 _IO_read_end값도 조작한다.
 
-(3) 조작이 완료되면 puts함수가 호출될때 _IO_overflow를 호출하면서 조작된 크기만큼의 버퍼를 _IO_write_base위치의 데이터부터 출력하게된다.
-
+(3) 조작이 완료되면 puts함수가 호출될때 _IO_overflow를 호출하면서 조작된 data(_IO_write_base)의 주소부터 size(_IO_write_ptr - _IO_write_base)의 크기만큼 출력하게된다.
 
 
 ```python
@@ -858,7 +858,7 @@ _IO_str_fields에는 _IO_str_overflow()함수 내부에서 (*(_IO_strfile *))fp-
 glibc가 업데이트되면서 (*(_IO_strfile *))fp->_s._allocate_buffer(new_size) 여기의 코드는 malloc()함수로 바뀌게된다.
 
 
-전체적인 _IO_str_jumps의 구조
+(struct _IO_strfile_)_IO_str_jumps의 구조
 
 ```c
 
@@ -908,7 +908,7 @@ glibc가 업데이트되면서 (*(_IO_strfile *))fp->_s._allocate_buffer(new_siz
 그럼 이제 _s의 _allocate_buffer_unused 위치에 system을 써야한다는걸 알았고 binsh를 (*((_IO_strfile *) fp)->_s._allocate_buffer) (new_size); 의 new_size에 넣을려면 앞에서 조건을 조금 맞춰줘야한다.
 
 
-### binsh for newsize
+### binsh to newsize
 
 ```c
 
@@ -1007,7 +1007,7 @@ pwndbg>  ptype /o struct _IO_FILE
 pay+=p64(0)
 pay+=p64(stdin)*4
 pay+=p64(leak_stdout) #_IO_buf_base
-pay+=p64(leak_stdout+0x2000) #_IO_buf_end
+pay+=p64(leak_stdout+0x1000) #_IO_buf_end
 pay=pay.ljust(0x84,b'\x00')
 p.sendline(pay)
 
