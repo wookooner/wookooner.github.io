@@ -10,7 +10,7 @@ tags: [solidity, smart-contract, access-control, fallback, foundry]
 
 Foundary 버전 오류로 코드를 조금 수정했다.
 
-```javascript
+```solidity
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -59,7 +59,7 @@ contract Fallout {
 
  ## exploit
 
- ``` javascript 
+ ``` solidity 
  
  pragma solidity ^0.8.0;
 
