@@ -10,7 +10,7 @@ tags: [solidity, smart-contract, access-control, fallback, foundry]
 
 Fallback 코드 :
 
-```solidity
+'''solidity
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -52,7 +52,7 @@ contract Fallback {
 }
 
 
-```
+'''
 
 목표는 owner 가 msg.sender가 되게하는거다.
 
@@ -72,7 +72,7 @@ contribute 함수를 보면 msg.value가 0.001ether 이하일떄만 통과 가�
 
 contributions에 한번 전송해서(0.001 밑으로) 값을 채운뒤 그냥 아무값이나 value에넣어서 전송하면 external payable때문데 reveive()가 호출된다.
 
-```solidity
+'''solidity
 
 // SPDX-License-Identifier:MIT
 pragma solidity ^0.8.0;
@@ -103,4 +103,4 @@ contract FallbackTest is Test {
     }
 }
 
-```
+'''
