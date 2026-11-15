@@ -1,6 +1,6 @@
 ---
-title: "Ethernaut Fallback"
-date : 2026-11-14 00:00:00 +0900
+title: "Ethernaut CoinFlip"
+date : 2026-11-15 00:00:00 +0900
 categories: [Blockchain Security, Ethernaut ]
 tags: [solidity, smart-contract, access-control, fallback, foundry]
 ---
